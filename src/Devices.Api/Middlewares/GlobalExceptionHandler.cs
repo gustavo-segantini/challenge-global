@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Devices.Application.Exceptions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Devices.Api.Middlewares;
 
+[ExcludeFromCodeCoverage]
 public sealed class GlobalExceptionHandler : IExceptionHandler
 {
     private readonly ILogger<GlobalExceptionHandler> _logger;

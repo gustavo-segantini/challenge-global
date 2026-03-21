@@ -7,7 +7,7 @@ COPY ["src/Devices.Application/Devices.Application.csproj", "src/Devices.Applica
 COPY ["src/Devices.Domain/Devices.Domain.csproj", "src/Devices.Domain/"]
 COPY ["src/Devices.Infrastructure/Devices.Infrastructure.csproj", "src/Devices.Infrastructure/"]
 
-RUN dotnet restore "DevicesApi.sln"
+RUN dotnet restore "src/Devices.Api/Devices.Api.csproj"
 
 COPY . .
 RUN dotnet publish "src/Devices.Api/Devices.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
