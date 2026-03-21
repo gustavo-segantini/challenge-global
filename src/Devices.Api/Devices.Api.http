@@ -1,0 +1,82 @@
+@Devices.Api_HostAddress = http://localhost:8080
+@ApiVersion = 1
+@DeviceId = 00000000-0000-0000-0000-000000000000
+
+### Health - Liveness
+GET {{Devices.Api_HostAddress}}/health/live
+Accept: application/json
+
+###
+
+### Health - Readiness (includes DB check)
+GET {{Devices.Api_HostAddress}}/health/ready
+Accept: application/json
+
+###
+
+### Create device
+POST {{Devices.Api_HostAddress}}/api/v{{ApiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+
+{
+	"name": "Edge Router",
+	"brand": "Fabrikam",
+	"state": "available"
+}
+
+###
+
+### Get all devices (paged)
+GET {{Devices.Api_HostAddress}}/api/v{{ApiVersion}}/devices?pageNumber=1&pageSize=20
+Accept: application/json
+
+###
+
+### Get device by id
+GET {{Devices.Api_HostAddress}}/api/v{{ApiVersion}}/devices/{{DeviceId}}
+Accept: application/json
+
+###
+
+### Get devices by brand
+GET {{Devices.Api_HostAddress}}/api/v{{ApiVersion}}/devices/brand/Fabrikam
+Accept: application/json
+
+###
+
+### Get devices by state
+GET {{Devices.Api_HostAddress}}/api/v{{ApiVersion}}/devices/state/available
+Accept: application/json
+
+###
+
+### Full update device
+PUT {{Devices.Api_HostAddress}}/api/v{{ApiVersion}}/devices/{{DeviceId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+	"name": "Edge Router X",
+	"brand": "Fabrikam",
+	"state": "inactive"
+}
+
+###
+
+### Partial update device
+PATCH {{Devices.Api_HostAddress}}/api/v{{ApiVersion}}/devices/{{DeviceId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+	"state": "in-use"
+}
+
+###
+
+### Delete device
+DELETE {{Devices.Api_HostAddress}}/api/v{{ApiVersion}}/devices/{{DeviceId}}
+Accept: application/json
+
+###
