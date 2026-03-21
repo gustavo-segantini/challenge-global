@@ -67,6 +67,39 @@ A clean commit strategy for this repository:
 5. `test: add unit and integration tests`
 6. `chore: add docker artifacts and readme`
 
+## Mini Branch Flow (Standard)
+
+Use this lightweight flow for all new work:
+
+1. Create feature branch from `develop`:
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout -b feature/<short-name>
+```
+
+2. Commit and push your feature branch:
+
+```bash
+git add .
+git commit -m "feat: <what changed>"
+git push origin feature/<short-name>
+```
+
+3. Open Pull Request: `feature/<short-name>` -> `develop`.
+
+4. Release flow: open Pull Request `develop` -> `main`.
+
+5. After release merge, create and push a tag from `main`:
+
+```bash
+git checkout main
+git pull origin main
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
 ## API Endpoints
 
 Base route (v1): `/api/v1/devices`
