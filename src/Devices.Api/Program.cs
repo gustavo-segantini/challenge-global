@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Devices.Api.Middlewares;
+using Devices.Api.Observability;
 using Devices.Application.Abstractions;
 using Devices.Application.DependencyInjection;
 using Devices.Domain.Enums;
@@ -10,8 +11,41 @@ using Devices.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<ObservabilityOptions>(
+    builder.Configuration.GetSection(ObservabilityOptions.SectionName));
+
+var observabilityOptions = builder.Configuration
+    .GetSection(ObservabilityOptions.SectionName)
+    .Get<ObservabilityOptions>() ?? new ObservabilityOptions();
+
+builder.Logging.ClearProviders();
+builder.Logging.AddJsonConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ ";
+});
+
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeScopes = true;
+    logging.IncludeFormattedMessage = true;
+    logging.ParseStateValues = true;
+
+    if (!builder.Environment.IsEnvironment("Testing") && !string.IsNullOrWhiteSpace(observabilityOptions.Otlp.Endpoint))
+    {
+        logging.AddOtlpExporter(exporterOptions =>
+        {
+            exporterOptions.Endpoint = new Uri(observabilityOptions.Otlp.Endpoint!);
+        });
+    }
+});
 
 builder.Services
     .AddControllers()
@@ -36,6 +70,40 @@ builder.Services
     });
 
 builder.Services.AddApplication();
+builder.Services.AddSingleton<HttpRequestBenchmarkCollector>();
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(observabilityOptions.ServiceName))
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation();
+
+        if (!builder.Environment.IsEnvironment("Testing") && !string.IsNullOrWhiteSpace(observabilityOptions.Otlp.Endpoint))
+        {
+            tracing.AddOtlpExporter(exporterOptions =>
+            {
+                exporterOptions.Endpoint = new Uri(observabilityOptions.Otlp.Endpoint!);
+            });
+        }
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddMeter(HttpRequestBenchmarkCollector.MeterName);
+
+        if (!builder.Environment.IsEnvironment("Testing") && !string.IsNullOrWhiteSpace(observabilityOptions.Otlp.Endpoint))
+        {
+            metrics.AddOtlpExporter(exporterOptions =>
+            {
+                exporterOptions.Endpoint = new Uri(observabilityOptions.Otlp.Endpoint!);
+            });
+        }
+    });
 
 if (builder.Environment.IsEnvironment("Testing"))
 {
@@ -76,6 +144,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
+app.UseMiddleware<RequestObservabilityMiddleware>();
 app.UseAuthorization();
 
 await using (var scope = app.Services.CreateAsyncScope())
@@ -93,6 +162,10 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 
 app.MapControllers();
+app.MapGet("/observability/benchmark", (HttpRequestBenchmarkCollector collector) => Results.Ok(collector.Snapshot()))
+    .WithName("GetObservabilityBenchmark")
+    .WithSummary("Returns simple benchmark metrics for HTTP request latency.")
+    .WithDescription("Provides aggregate and recent-window latency statistics captured by middleware.");
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
     Predicate = _ => false
