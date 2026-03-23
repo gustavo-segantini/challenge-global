@@ -259,6 +259,31 @@ public sealed class DevicesEndpointsTests : IClassFixture<DevicesApiFactory>
     }
 
     [Fact]
+    public async Task AnyRequest_ShouldIncludeResponseTimeHeader()
+    {
+        var response = await _client.GetAsync("/health/live");
+
+        response.Headers.Contains("X-Response-Time-Ms").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task BenchmarkEndpoint_ShouldReturnSnapshot()
+    {
+        await _client.GetAsync("/health/live");
+        await _client.GetAsync("/health/ready");
+
+        var response = await _client.GetAsync("/observability/benchmark");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var snapshot = await response.Content.ReadFromJsonAsync<HttpRequestBenchmarkSnapshotResponse>();
+        snapshot.Should().NotBeNull();
+        snapshot!.TotalRequests.Should().BeGreaterThan(0);
+        snapshot.AverageMs.Should().BeGreaterThanOrEqualTo(0);
+        snapshot.MaxMs.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
     public async Task Create_ShouldReturnBadRequest_WhenPayloadIsInvalid()
     {
         var response = await _client.PostAsJsonAsync(
@@ -291,4 +316,12 @@ public sealed class DevicesEndpointsTests : IClassFixture<DevicesApiFactory>
 
         return created!;
     }
+
+    private sealed record HttpRequestBenchmarkSnapshotResponse(
+        DateTimeOffset TimestampUtc,
+        long TotalRequests,
+        int WindowSize,
+        double AverageMs,
+        double MaxMs,
+        double P95Ms);
 }
