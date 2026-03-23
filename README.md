@@ -27,6 +27,7 @@ The API enforces domain rules at the domain/application layers:
 - PostgreSQL (Npgsql provider)
 - FluentValidation
 - Swagger / OpenAPI (Swashbuckle)
+- Structured JSON logging + OpenTelemetry (traces, metrics, logs)
 - xUnit, Moq, FluentAssertions
 - Docker and Docker Compose
 
@@ -112,6 +113,7 @@ Base route (v1): `/api/v1/devices`
 6. `GET /api/v1/devices/brand/{brand}`
 7. `GET /api/v1/devices/state/{state}`
 8. `DELETE /api/v1/devices/{id}`
+9. `GET /observability/benchmark`
 
 Versioning is configured with a default API version of `1.0`. You can specify version via:
 
@@ -123,6 +125,20 @@ Versioning is configured with a default API version of `1.0`. You can specify ve
 
 - `GET /health/live`: process liveness probe
 - `GET /health/ready`: readiness probe including database connectivity
+
+## Observability
+
+- Structured JSON logs are emitted for all requests.
+- Request logs include method, path, status code, elapsed time, and trace id.
+- OpenTelemetry tracing and metrics are enabled for ASP.NET Core + HttpClient.
+- Simple benchmarking is available through `GET /observability/benchmark`.
+- Each response includes `X-Response-Time-Ms` header.
+
+Configuration:
+
+- `Observability:ServiceName` (default: `devices-api`)
+- `Observability:SlowRequestThresholdMs` (default: `500`)
+- `Observability:Otlp:Endpoint` (optional OTLP collector endpoint)
 
 ## Sample Requests and Responses
 
@@ -296,7 +312,6 @@ docker run --rm -p 8080:8080 \
 ## Future Improvements
 
 1. Add authentication/authorization (JWT + role policies).
-2. Add structured logging and distributed tracing (OpenTelemetry).
-3. Add richer querying (sorting, filtering, search, cursor pagination).
-4. Add optimistic concurrency with row versioning.
-5. Add CI pipeline for linting, tests, and container scanning.
+2. Add richer querying (sorting, filtering, search, cursor pagination).
+3. Add optimistic concurrency with row versioning.
+4. Add CI pipeline for linting, tests, and container scanning.

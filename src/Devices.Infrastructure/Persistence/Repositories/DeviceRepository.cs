@@ -27,23 +27,25 @@ public sealed class DeviceRepository : IDeviceRepository
 
     public async Task<IReadOnlyList<Device>> GetByBrandAsync(string brand, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Devices
-            .Where(device => device.Brand == brand)
-            .OrderBy(device => device.CreationTime)
+        var query = _dbContext.Devices
+            .Where(device => device.Brand == brand);
+
+        return await ApplyDefaultOrdering(query)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<Device>> GetByStateAsync(DeviceState state, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Devices
-            .Where(device => device.State == state)
-            .OrderBy(device => device.CreationTime)
+        var query = _dbContext.Devices
+            .Where(device => device.State == state);
+
+        return await ApplyDefaultOrdering(query)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<(IReadOnlyList<Device> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.Devices.OrderBy(device => device.CreationTime);
+        var query = ApplyDefaultOrdering(_dbContext.Devices);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
@@ -63,5 +65,15 @@ public sealed class DeviceRepository : IDeviceRepository
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private IOrderedQueryable<Device> ApplyDefaultOrdering(IQueryable<Device> query)
+    {
+        if (string.Equals(_dbContext.Database.ProviderName, "Microsoft.EntityFrameworkCore.Sqlite", StringComparison.Ordinal))
+        {
+            return query.OrderBy(device => device.Id);
+        }
+
+        return query.OrderBy(device => device.CreationTime).ThenBy(device => device.Id);
     }
 }
